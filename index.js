@@ -1,150 +1,177 @@
-const noble = require("@abandonware/noble");
-const readline = require('readline');
+const BluetoothHandler = require("./bluetooth");
+const {
+    brightness
+} = require("./commands");
+const commands = require('./commands');
+const Lightbar = require("./lightbar");
 
-const MODEL = "Govee_H6054_1146";
-const SERVICE = "000102030405060708090a0b0c0d1910";
+class LightbarSet {
+    constructor() {
+        this.swapped = false;
 
-const WRITE_CHARACTERISTIC = "000102030405060708090a0b0c0d2b11";
-const READ_CHARACTERISTIC = "000102030405060708090a0b0c0d2b10";
+        this.bar_1 = new Lightbar();
+        this.bar_2 = new Lightbar();
 
-const CONTROL_PACKET_ID = 0x33;
-
-function hexify(x) {
-    let toReturn = x.toString(16)
-    return toReturn.length < 2 ? '0' + toReturn : toReturn
-}
-
-function assembleMessageWithChecksum(bytes) {
-    while (bytes.length < 18) bytes.push(0);
-
-    let checksum = Number(CONTROL_PACKET_ID);
-    bytes.forEach(byte => {
-        checksum ^= Number(byte);
-    });
-
-    return [CONTROL_PACKET_ID, ...bytes, checksum].map(hexify).join("");
-}
-
-let writeCharacteristic;
-
-async function sendMessage(message) {
-    await writeCharacteristic.writeAsync(Buffer.from(message, "hex"), false);
-}
-
-async function setRGB(r, g, b, s1, s2) {
-    await sendMessage(assembleMessageWithChecksum([
-        0x05, 0x15, 0x01,
-        r, g, b,
-        0x00, 0x00, 0x00, 0x00, 0x00,
-        s1, s2
-    ]));
-}
-
-noble.on("discover", async (peripheral) => {
-    const {
-        id,
-        uuid,
-        address,
-        state,
-        rssi,
-        advertisement
-    } = peripheral;
-
-    if (advertisement.localName !== MODEL) return;
-
-    console.log("Discovered", id, uuid, address, state, rssi, advertisement.localName);
-
-    peripheral.on("disconnect", (err) => {
-        if (err) console.error("error ", err);
-        console.log(advertisement.localName + " disconnected");
-    });
-
-    peripheral.on("connect", (err) => {
-        if (err) console.error("error ", err);
-        console.log(advertisement.localName + " connected")
-    });
-
-    // Connect and find the writing characteristic
-    await peripheral.connectAsync();
-
-    let stuffFound = await peripheral.discoverSomeServicesAndCharacteristicsAsync([], [WRITE_CHARACTERISTIC, READ_CHARACTERISTIC])
-    if (!stuffFound.characteristics) {
-        return
+        this.bluetooth = new BluetoothHandler();
     }
 
-    writeCharacteristic = stuffFound.characteristics.find(c => {
-        return c._serviceUuid === SERVICE && c.uuid === WRITE_CHARACTERISTIC;
-    });
+    get left() {
+        return this.swapped ? this.bar_2 : this.bar_1;
+    }
 
-    //0x33 = power
-    await sendMessage(assembleMessageWithChecksum([
-        0x33, 0x11
-    ])); // both on
+    get right() {
+        return this.swapped ? this.bar_1 : this.bar_2;
+    }
 
-    //warm white
-    /* await sendMessage(assembleMessageWithChecksum([
-        0x05, 0x15, 0x01, 0xFF, 0xFF, 0xFF, 0x07, 0xd0, 0xff, 0x89, 0x12,
-        0x00, 0x0F
-    ])); */
+    discover() {
+        return new Promise((resolve, reject) => {
+            const handler = () => {
+                this.bluetooth.events.off("ready", handler);
+                resolve();
+            }
 
-    //0x04 = brightness
-    await sendMessage(assembleMessageWithChecksum([
-        0x04, 0x64
-    ])); //full brightness for both
+            this.bluetooth.events.on("ready", handler);
 
-    /* let s = 0;
+            this.bluetooth.discover();
+        });
+    }
 
-    async function next() {
-        const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout,
+    swap() {
+        this.swapped = !this.swapped;
+    }
+
+    async sendMessage(type, ...args) {
+        await this.bluetooth.writeCharacteristic.writeAsync(commands[type](...args), false);
+    }
+
+    convertSegmentIndexes(left, right) {
+        //we need two 8 bit numbers           00000000 00000000
+        //but each side has only 6 segments: 0000 000000 000000
+        //mapped like this:                  bbbb bbbbaa aaaaaa
+
+        let s1 = left.reduce((c, i) => c + Math.pow(2, i), 0);
+        let s2 = right.reduce((c, i) => c + Math.pow(2, i), 0);
+        let combined = (s1 << 6) + s2;
+        return [
+            combined & 0xFF,
+            (combined >> 8) & 0xFF
+        ];
+    }
+
+    saveColor() {
+        let unique_colors = {};
+        let unique_brighness = {};
+
+        function assembleSegments(bar, side) {
+            let segments = bar.getSegments();
+
+            segments.forEach(s => {
+                // unique color
+                let key = [s.r, s.g, s.b].join("-");
+
+                if (!unique_colors[key]) {
+                    unique_colors[key] = {
+                        segments_left: [],
+                        segments_right: [],
+                        r: s.r,
+                        g: s.g,
+                        b: s.b
+                    };
+                }
+
+                unique_colors[key]["segments_" + side].push(s.index);
+
+                //unique brightness
+                key = s.brightness;
+
+                if (!unique_brighness[key]) {
+                    unique_brighness[key] = {
+                        segments_left: [],
+                        segments_right: [],
+                        brightness: s.brightness
+                    };
+                }
+
+                unique_brighness[key]["segments_" + side].push(s.index);
+            });
+        }
+
+        assembleSegments(this.left, "left");
+        assembleSegments(this.right, "right");
+
+        console.log(unique_colors, unique_brighness);
+
+        Object.values(unique_colors).forEach(async (s) => {
+            let seg = this.convertSegmentIndexes(s.segments_left, s.segments_right);
+            await this.sendMessage("rgb", s.r, s.g, s.b, seg[0], seg[1]);
         });
 
-        //0x05 = color
-        await setRGB(0x00, 0x00, 0x00, 0xFF, 0x0F);
-        await setRGB(0xff, 0x00, 0x00, s, 0x00);
-
-        return new Promise(resolve => rl.question(s, ans => {
-            rl.close();
-            s++;
-            resolve();
-        }))
+        Object.values(unique_brighness).forEach(async (s) => {
+            let seg = this.convertSegmentIndexes(s.segments_left, s.segments_right);
+            await this.sendMessage("brightness", s.brightness, seg[0], seg[1]);
+        });
     }
 
-    //0x05 = color
-    while (s < 256) {
-        await next();
-    } */
-
-    function blink() {
-        setRGB(0x00, 0x00, 0x00, 0x55, 0x05);
-        setRGB(0x00, 0x00, 0xff, 0xAA, 0x0A);
-
-        setTimeout(() => {
-            setRGB(0x00, 0x00, 0x00, 0xAA, 0x0A);
-            setRGB(0xff, 0x00, 0x00, 0x55, 0x05);
-        }, 1000);
+    async turnOn(left = true, right = true) {
+        await this.sendMessage("power", this.swapped ? right : left, this.swapped ? left : right);
     }
 
-    setInterval(blink, 2000);
+    async turnOff(left = true, right = true) {
+        await this.sendMessage("power", this.swapped ? !right : !left, this.swapped ? !left : !right);
+    }
 
-    return;
+    async setBrightness(brightness) {
+        await this.sendMessage("global_brightness", brightness);
+    }
+}
 
-    // not possible in white mode
-    await sendMessage(assembleMessageWithChecksum([
-        0x05, 0x15, 0x02,
-        0x32,
-        0x01, 0x00
-    ])); //brightness only for left half
+let l = new LightbarSet();
+
+l.discover().then(() => {
+    return l.turnOn(true, true);
+}).then(() => {
+    return l.setBrightness(100);
+}).then(() => {
+    l.left.setRGB(0, 0x1b, 0xa1, 0x98);
+    l.left.setRGB(1, 0x00, 0x96, 0xB0);
+    l.left.setRGB(2, 200, 50, 255);
+    l.left.setRGB(3, 200, 50, 255);
+    l.left.setRGB(4, 255, 0, 128);
+    l.left.setRGB(5, 255, 0, 128);
+
+    l.right.setRGB(0, 0x1b, 0xa1, 0x98);
+    l.right.setRGB(1, 0x00, 0x96, 0xB0);
+    l.right.setRGB(2, 200, 50, 255);
+    l.right.setRGB(3, 200, 50, 255);
+    l.right.setRGB(4, 255, 0, 128);
+    l.right.setRGB(5, 255, 0, 128);
+
+    //l.sendMessage("scene", 4);
+
+    return l.saveColor();
 });
 
+// await sendMessage("power", true, true);
+//await sendMessage("white", 0x07, 0xd0, 0xff, 0x89, 0x12, 0xFF, 0x0F);
+// await sendMessage("global_brightness", 100);
 
-noble.on("scanStart", () => {
-    console.log("Scan Started!");
-})
+/* commands.diy().forEach(async cmd => {
+    console.log(cmd);
+    await writeCharacteristic.writeAsync(cmd, false);
+}); */
 
-noble.on("scanStop", () => {
-    console.log("Scan Stopped!");
-})
+// setInterval(async () => {
+//     await sendMessage("keepalive");
+// }, 2000);
 
-noble.startScanningAsync([], false)
+// function blink() {
+//     setRGB(0x00, 0x00, 0x00, 0x55, 0x05);
+//     setRGB(0x00, 0x00, 0xff, 0xAA, 0x0A);
+
+//     setTimeout(() => {
+//         setRGB(0x00, 0x00, 0x00, 0xAA, 0x0A);
+//         setRGB(0xff, 0x00, 0x00, 0x55, 0x05);
+//     }, 1000);
+// }
+
+// setInterval(blink, 2000);
