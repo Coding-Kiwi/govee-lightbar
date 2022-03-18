@@ -1,6 +1,6 @@
 const CONTROL_PACKET_ID = 0x33;
 const CONTROL_KEEPALIVE_ID = 0xaa;
-const CONTROL_DIY_ID = 0xa1;
+const CONTROL_WRITE = 0xa3;
 
 const CMD_POWER = 0x33;
 const CMD_BRIGH = 0x04;
@@ -20,6 +20,45 @@ function prepareMsg(bytes) {
     });
 
     return Buffer.from([...bytes, checksum].map(hexify).join(""), "hex");
+}
+
+function buildDataPackages(data) {
+    let packets = [];
+
+    //first packet
+    let first_packet = [
+        CONTROL_WRITE,
+        0x00,
+        0x01,
+        null, //this will hold the amount
+        ...data.slice(0, 15)
+    ];
+
+    packets.push(first_packet);
+
+    let i = 15;
+    while (i <= data.length) {
+        if (i + 17 > data.length) {
+            //its the last one
+            packets.push([
+                CONTROL_WRITE,
+                0xff,
+                ...data.slice(i, i + 17)
+            ]);
+        } else {
+            packets.push([
+                CONTROL_WRITE,
+                packets.length,
+                ...data.slice(i, i + 17)
+            ]);
+        }
+
+        i += 17;
+    }
+
+    packets[0][3] = packets.length;
+
+    return packets.map(prepareMsg);
 }
 
 module.exports = {
@@ -88,9 +127,8 @@ module.exports = {
         ]);
     },
 
-    diy() {
-        let opts = {
-            name: 0x3b, //no clue
+    diy(options = {}) {
+        let opts = Object.assign({
             style: 0x00,
             style_mode: 0x00,
             speed: 98, //percent,
@@ -99,7 +137,7 @@ module.exports = {
                 g: 255,
                 b: 255
             }]
-        };
+        }, options);
 
         let color_arr = [];
 
@@ -107,64 +145,26 @@ module.exports = {
             color_arr.push(c.r, c.g, c.b);
         });
 
-        let data_packets = [];
-
-        //color packet 1
-        data_packets.push([
-            opts.name,
-            opts.style, opts.style_mode,
-            opts.speed,
-            0x18,
-            ...color_arr.slice(0, 11)
-        ]);
-
-        //optional color packet 2
-        if (color_arr.length > 10) {
-            data_packets.push([
-                ...color_arr.slice(11),
-                0x08
-            ]);
-        }
-
         //"combo" style and stylemode
         // data_packets.push([
         //     0x01, 0x00, 0x02, 0x00, 0x03, 0x03
         // ]);
 
-        let ret = [];
-
-        //keepalive
-        ret.push([
-            CONTROL_KEEPALIVE_ID,
-            0x33
-        ]);
-
-        //start write
-        ret.push([
-            CONTROL_DIY_ID, 0x02,
-            0x00, data_packets.length
-        ]);
-
-        //data
-        data_packets.forEach((d, di) => {
-            ret.push([
-                CONTROL_DIY_ID, 0x02, di + 1,
-                ...d
-            ]);
-        });
-
-        //end write
-        ret.push([
-            CONTROL_DIY_ID, 0x02,
-            0xff
+        let ret = buildDataPackages([
+            0x04,
+            opts.style, opts.style_mode,
+            opts.speed,
+            color_arr.length,
+            ...color_arr
         ]);
 
         //diy mode (this might not be needed for writing)
-        ret.push([
+        ret.push(prepareMsg([
             CONTROL_PACKET_ID,
-            CMD_COLOR, 0x0a
-        ]);
+            CMD_COLOR, 0x0a, 0x01
+        ]));
 
-        return ret.map(prepareMsg);
+        return ret;
     },
+    buildDataPackages
 }

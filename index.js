@@ -1,7 +1,4 @@
 const BluetoothHandler = require("./bluetooth");
-const {
-    brightness
-} = require("./commands");
 const commands = require('./commands');
 const Lightbar = require("./lightbar");
 
@@ -23,25 +20,12 @@ class LightbarSet {
         return this.swapped ? this.bar_1 : this.bar_2;
     }
 
-    discover() {
-        return new Promise((resolve, reject) => {
-            const handler = () => {
-                this.bluetooth.events.off("ready", handler);
-                resolve();
-            }
-
-            this.bluetooth.events.on("ready", handler);
-
-            this.bluetooth.discover();
-        });
-    }
-
     swap() {
         this.swapped = !this.swapped;
     }
 
     async sendMessage(type, ...args) {
-        await this.bluetooth.writeCharacteristic.writeAsync(commands[type](...args), false);
+        await this.bluetooth.write(commands[type](...args));
     }
 
     convertSegmentIndexes(left, right) {
@@ -99,8 +83,6 @@ class LightbarSet {
         assembleSegments(this.left, "left");
         assembleSegments(this.right, "right");
 
-        console.log(unique_colors, unique_brighness);
-
         Object.values(unique_colors).forEach(async (s) => {
             let seg = this.convertSegmentIndexes(s.segments_left, s.segments_right);
             await this.sendMessage("rgb", s.r, s.g, s.b, seg[0], seg[1]);
@@ -123,55 +105,75 @@ class LightbarSet {
     async setBrightness(brightness) {
         await this.sendMessage("global_brightness", brightness);
     }
+
+    async diy(options) {
+        commands.diy(options).forEach(async cmd => {
+            await this.bluetooth.writeCharacteristic.writeAsync(cmd, false);
+        });
+    }
 }
 
 let l = new LightbarSet();
 
-l.discover().then(() => {
-    return l.turnOn(true, true);
-}).then(() => {
+l.turnOn(true, true).then(() => {
     return l.setBrightness(100);
 }).then(() => {
-    l.left.setRGB(0, 0x1b, 0xa1, 0x98);
-    l.left.setRGB(1, 0x00, 0x96, 0xB0);
-    l.left.setRGB(2, 200, 50, 255);
-    l.left.setRGB(3, 200, 50, 255);
-    l.left.setRGB(4, 255, 0, 128);
-    l.left.setRGB(5, 255, 0, 128);
+    // === moving gradient ===
+    return l.diy({
+        style: 0x09,
+        speed: 50,
+        colors: [{
+                r: 27,
+                g: 161,
+                b: 152
+            },
+            {
+                r: 0,
+                g: 150,
+                b: 176
+            },
+            {
+                r: 0,
+                g: 134,
+                b: 191
+            },
+            {
+                r: 71,
+                g: 113,
+                b: 188
+            },
+            {
+                r: 128,
+                g: 86,
+                b: 163
+            },
+            {
+                r: 157,
+                g: 56,
+                b: 119
+            },
+        ]
+    });
+}).then(() => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            // === fixed gradient ===
+            l.left.setRGB(0, 0x1b, 0xa1, 0x98);
+            l.left.setRGB(1, 0x00, 0x96, 0xB0);
+            l.left.setRGB(2, 200, 50, 255);
+            l.left.setRGB(3, 200, 50, 255);
+            l.left.setRGB(4, 255, 0, 128);
+            l.left.setRGB(5, 255, 0, 128);
 
-    l.right.setRGB(0, 0x1b, 0xa1, 0x98);
-    l.right.setRGB(1, 0x00, 0x96, 0xB0);
-    l.right.setRGB(2, 200, 50, 255);
-    l.right.setRGB(3, 200, 50, 255);
-    l.right.setRGB(4, 255, 0, 128);
-    l.right.setRGB(5, 255, 0, 128);
+            l.right.setRGB(0, 0x1b, 0xa1, 0x98);
+            l.right.setRGB(1, 0x00, 0x96, 0xB0);
+            l.right.setRGB(2, 200, 50, 255);
+            l.right.setRGB(3, 200, 50, 255);
+            l.right.setRGB(4, 255, 0, 128);
+            l.right.setRGB(5, 255, 0, 128);
 
-    //l.sendMessage("scene", 4);
-
-    return l.saveColor();
+            l.saveColor();
+            resolve();
+        }, 15000);
+    });
 });
-
-// await sendMessage("power", true, true);
-//await sendMessage("white", 0x07, 0xd0, 0xff, 0x89, 0x12, 0xFF, 0x0F);
-// await sendMessage("global_brightness", 100);
-
-/* commands.diy().forEach(async cmd => {
-    console.log(cmd);
-    await writeCharacteristic.writeAsync(cmd, false);
-}); */
-
-// setInterval(async () => {
-//     await sendMessage("keepalive");
-// }, 2000);
-
-// function blink() {
-//     setRGB(0x00, 0x00, 0x00, 0x55, 0x05);
-//     setRGB(0x00, 0x00, 0xff, 0xAA, 0x0A);
-
-//     setTimeout(() => {
-//         setRGB(0x00, 0x00, 0x00, 0xAA, 0x0A);
-//         setRGB(0xff, 0x00, 0x00, 0x55, 0x05);
-//     }, 1000);
-// }
-
-// setInterval(blink, 2000);

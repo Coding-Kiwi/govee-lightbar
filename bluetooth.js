@@ -1,5 +1,4 @@
 const noble = require("@abandonware/noble");
-const mitt = require("mitt");
 
 const MODEL = "Govee_H6054_1146";
 const SERVICE = "000102030405060708090a0b0c0d1910";
@@ -10,63 +9,57 @@ const READ_CHARACTERISTIC = "000102030405060708090a0b0c0d2b10";
 class BluetoothHandler {
     constructor() {
         this.writeCharacteristic = null;
-        this.events = mitt();
-    }
+        this.connected = false;
+        this.connect_cb = () => {};
 
-    discover() {
         noble.on("discover", async (peripheral) => {
-            const {
-                id,
-                uuid,
-                address,
-                state,
-                rssi,
-                advertisement
-            } = peripheral;
+            await noble.stopScanningAsync();
 
-            if (advertisement.localName !== MODEL) return;
-
-            console.log("Discovered", id, uuid, address, state, rssi, advertisement.localName);
+            if (peripheral.advertisement.localName !== MODEL) return;
 
             peripheral.on("disconnect", (err) => {
                 if (err) console.error("error ", err);
-                console.log(advertisement.localName + " disconnected");
-                this.events.emit("disconnected");
+                console.log(peripheral.advertisement.localName + " disconnected");
+                this.connected = false;
             });
 
-            peripheral.on("connect", (err) => {
+            peripheral.on("connect", async (err) => {
                 if (err) console.error("error ", err);
-                console.log(advertisement.localName + " connected")
-                this.events.emit("connected");
+                console.log(peripheral.advertisement.localName + " connected")
+                this.connected = true;
+
+                let stuffFound = await this.peripheral.discoverSomeServicesAndCharacteristicsAsync([], [WRITE_CHARACTERISTIC, READ_CHARACTERISTIC])
+                if (!stuffFound.characteristics) {
+                    return
+                }
+
+                this.writeCharacteristic = stuffFound.characteristics.find(c => {
+                    return c._serviceUuid === SERVICE && c.uuid === WRITE_CHARACTERISTIC;
+                });
+
+                this.connect_cb();
             });
 
-            // Connect and find the writing characteristic
-            await peripheral.connectAsync();
+            this.peripheral = peripheral;
+            await this.peripheral.connectAsync();
+        });
+    }
 
-            let stuffFound = await peripheral.discoverSomeServicesAndCharacteristicsAsync([], [WRITE_CHARACTERISTIC, READ_CHARACTERISTIC])
-            if (!stuffFound.characteristics) {
-                return
+    connect() {
+        return new Promise((resolve, reject) => {
+            this.connect_cb = resolve;
+
+            if (this.peripheral) {
+                this.peripheral.connectAsync();
+            } else {
+                noble.startScanningAsync([], false);
             }
-
-            this.writeCharacteristic = stuffFound.characteristics.find(c => {
-                return c._serviceUuid === SERVICE && c.uuid === WRITE_CHARACTERISTIC;
-            });
-
-            if (this.writeCharacteristic) {
-                this.events.emit("ready");
-            }
         });
+    }
 
-
-        noble.on("scanStart", () => {
-            this.events.emit("scanstart");
-        });
-
-        noble.on("scanStop", () => {
-            this.events.emit("scanstop");
-        });
-
-        noble.startScanningAsync([], false);
+    async write(buffer) {
+        if (!this.connected) await this.connect();
+        return await this.writeCharacteristic.writeAsync(buffer, false);
     }
 }
 
