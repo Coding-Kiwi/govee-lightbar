@@ -13,9 +13,8 @@ class BluetoothHandler {
         this.connect_cb = () => {};
 
         noble.on("discover", async (peripheral) => {
-            await noble.stopScanningAsync();
-
             if (peripheral.advertisement.localName !== MODEL) return;
+            await noble.stopScanningAsync();
 
             peripheral.on("disconnect", (err) => {
                 if (err) console.error("error ", err);
@@ -50,15 +49,21 @@ class BluetoothHandler {
             this.connect_cb = resolve;
 
             if (this.peripheral) {
+                console.log("Reconnecting");
                 this.peripheral.connectAsync();
             } else {
+                console.log("Starting scan");
                 noble.startScanningAsync([], false);
             }
         });
     }
 
     async write(buffer) {
-        if (!this.connected) await this.connect();
+        if (!this.connected) {
+            console.log("Connecting...");
+            await this.connect();
+        }
+
         return await this.writeCharacteristic.writeAsync(buffer, false);
     }
 }
