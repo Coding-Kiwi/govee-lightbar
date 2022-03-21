@@ -18,12 +18,15 @@ The module can be used to control:
 
 - Power:
   - Turn led strip on or off
-- RGB Color
+- RGB Color and Brightness
   - Turn led strip to any RGB color using hex
+  - Control each of the 12 individual color segments
 - Tunable White Color
   - Turn led strip to any white color temperature. Uses different LEDs than the RGB.
 - Brightness
-  - Turn led brightness from 0x0 (off) to 0xFF (255 or 100%)
+  - adjust global led brightness
+- DIY
+  - program govee diy effects
 
 ## Exported Methods
 
@@ -48,11 +51,25 @@ The module can be used to control:
   - `options.style_mode` some effects accept an additional mode (0 by default)
   - `options.speed` effect speed from 0 - 100
   - `options.colors` array of up to 8 colors in the format `{r: 255,g: 255,b: 255}`
+- `<side>.setRGB(segment, r, g, b)`
+  - Set the segment's rgb color
+- `<side>.setBrightness(segment, brightness)`
+  - Set the segment's rgb brightness
+- `<side>.setRGBFull(r, g, b)`
+  - Set all segments of the bar to the same color
+- `<side>.setWhite(k)`
+  - Set all segments of the bar to a white color, k is the kelvin value from 2000 to 8900
+
+## Bar Segments
+
+Each bar has 6 segments, they are indexed from 0 to 5, 0 being the segment closest to where the cable is attached.
+
+Each bar can either be in "rgb" or in "white" mode because it uses different leds, setting a segment's color or brightness switches it to "rgb" mode, setting a bar's white color switches it to "white" mode
 
 ## Example
 
 ```js
-const { LightbarSet } = require("govee-lightbar");
+const { LightbarSet, diyEffects } = require("govee-lightbar");
 
 let l = new LightbarSet();
 l.debug = true;
@@ -85,6 +102,21 @@ l.right.setRGB(4, 255, 0, 128);
 l.right.setRGB(5, 255, 0, 128);
 
 await l.saveColor();
+
+//example diy command, slow moving gradient
+
+l.diy({
+    style: diyEffects.RAINBOW,
+    speed: 50,
+    colors: [
+      {r: 27,g: 161,b: 152},
+      {r: 0,g: 150,b: 176},
+      {r: 0,g: 134,b: 191},
+      {r: 71,g: 113,b: 188},
+      {r: 128,g: 86,b: 163},
+      {r: 157,g: 56,b: 119}
+    ]
+})
 ```
 
 ## Credit

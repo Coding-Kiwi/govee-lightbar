@@ -38,6 +38,11 @@ class Lightbar {
         this.mode = "rgb";
     }
 
+    setBrightness(i, brightness) {
+        this.segments[i].brightness = brightness;
+        this.mode = "rgb";
+    }
+
     setRGBFull(r, g, b) {
         this.segments.forEach(s => {
             s.r = r;

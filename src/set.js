@@ -40,6 +40,27 @@ class LightbarSet {
         await this.bluetooth.write(commands[type](...args));
     }
 
+    sendMessages(msgs) {
+        return new Promise((resolve, reject) => {
+            if (!msgs.length) return resolve();
+
+            let curr = 0;
+
+            const next = () => {
+                this.bluetooth.write(msgs[curr]).then(() => {
+                    curr++;
+
+                    if (curr < msgs.length) {
+                        next();
+                    } else {
+                        resolve();
+                    }
+                });
+            }
+            next();
+        });
+    }
+
     convertSegmentIndexes(left, right) {
         //we need two 8 bit numbers           00000000 00000000
         //but each side has only 6 segments: 0000 000000 000000
@@ -122,24 +143,7 @@ class LightbarSet {
             this.log("Saving color [white]", s.k, s.s);
         });
 
-        return new Promise((resolve, reject) => {
-            if (!msgs.length) return resolve();
-
-            let curr = 0;
-
-            const next = () => {
-                this.bluetooth.write(msgs[curr]).then(() => {
-                    curr++;
-
-                    if (curr < msgs.length) {
-                        next();
-                    } else {
-                        resolve();
-                    }
-                });
-            }
-            next();
-        });
+        return this.sendMessages(msgs);
     }
 
     async turnOn(left = true, right = true) {
@@ -159,9 +163,7 @@ class LightbarSet {
     }
 
     async diy(options) {
-        commands.diy(options).forEach(async cmd => {
-            await this.bluetooth.writeCharacteristic.writeAsync(cmd, false);
-        });
+        return this.sendMessages(commands.diy(options));
     }
 }
 
