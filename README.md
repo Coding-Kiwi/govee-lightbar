@@ -105,7 +105,7 @@ await l.saveColor();
 
 //example diy command, slow moving gradient
 
-l.diy({
+await l.diy({
     style: diyEffects.RAINBOW,
     speed: 50,
     colors: [
