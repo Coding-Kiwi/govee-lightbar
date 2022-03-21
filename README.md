@@ -1,20 +1,16 @@
-# govee-bt-lightstrips
-[![npm version](https://badge.fury.io/js/govee-bt-lightstrips.svg)](https://badge.fury.io/js/govee-bt-lightstrips)
+# govee-lightbar
 
-Simple Node module used to control Govee Light Strips over BLE.
+Simple Node module used to control Govee Light Bars (Flow Pro H6054) over BLE.
 
 ## Installation
 
-`npm install govee-bt-lightstrips`
+`npm install govee-lightbar`
 
 ## Supported Models
 
 Currently supported and tested models are:
-- `H6182` RGB Bluetooth + WiFi TV Backlight LED Strip
-- `H6160` RGB Bluetooth + WiFi Waterproof 16.4 ft. LED Strip
+- `H6054`
 
-Module should probably work with other Govee lightstrip and light bulb models supporting bluetooth. 
-Add model strings in the `MODELS` array in the [Constants](src/constants.ts) file.
 
 ## Controls
 
@@ -31,76 +27,66 @@ The module can be used to control:
 
 ## Exported Methods
 
-- `debug(on: boolean)`
-  - Turn debug mode on/off. Adds debug print statements to help debug.
-- `startDiscovery()`
-  - Start discovery of bluetooth devices.
-- `stopDiscovery()`
-  - Stops discovery of bluetooth devices.
-- `getListOfStrips(): [GoveeLEDStrip]`
-  - Retrieves currently connected list of LED strips
-- `setColorOfStrip(ledStrip: GoveeLightStrip, newColor: Color, isWhite: boolean): GoveeLightStrip | undefined`
-  - Set the color of the given LED strip to the given color. If isWhite is true, will set to the given white color shade.
-  Returns the changed LED strip to keep track of the changes.
-- `setBrightnessOfStrip(ledStrip: GoveeLightStrip, newBrightness: number): GoveeLightStrip | undefined`
-  - Set the brightness of the given LED Strip to given brightness. Returns the changed LED strip to keep track of the changes.
-- `setPowerOfStrip(ledStrip: GoveeLightStrip, power: boolean):  GoveeLightStrip | undefined`
-  - Set the power of the given LED Strip. Returns the changed LED strip to keep track of the changes.
-- `registerScanStart(callback: Function)`
-- `registerScanStop(callback: Function)`
-- `registerDiscoveryCallback(callback: ((ledStrip: GoveeLightStrip) => void))`
-  - Registers a callback to discovery of any ledStrip. Useful to keep track of all the ledStrips connected.
-- `colorToHex(c: Color): string`
-  - Converts a Color to a hex string (Helper)
-- `hexToColor(s: string): Color`
-  - Converts a hex string to a color (Helper)
+- `swap()`
+  - Swap the left and right bar software-side
+- `saveColor()`
+  - Apply the colors and brightness values of the individual light bar segments
+- `turnOn(left, right)`
+  - Turn the individual bars on
+- `turnOff(left, right)`
+  - Turn the individual bars off
+- `setBrightness(brightness)`
+  - Set the global brightness for both bars
+- `keepalive()`
+  - Send a keepalive package if you want to keep the bluetooth connection alive
+- `scene(scene_id)`
+  - Change to 'scene' mode, parameter is the scene id
+  - Get scene ids from `const { scenes } = require("govee-lightbar");`
+- `diy(options = {})`
+  - Store a diy effect on the bars
+  - `options.style` the effect id, see `const { diyEffects } = require("govee-lightbar");`
+  - `options.style_mode` some effects accept an additional mode (0 by default)
+  - `options.speed` effect speed from 0 - 100
+  - `options.colors` array of up to 8 colors in the format `{r: 255,g: 255,b: 255}`
 
 ## Example
 
-```typescript
+```js
+const { LightbarSet } = require("govee-lightbar");
 
-registerDiscoveryCallback(async (ledStrip) => 
-{
-  setPowerOfStrip(ledStrip, true); // turn on
-  setBrightnessOfStrip(ledStrip, 0xFF); // max brightness
-  setColorOfStrip(ledStrip, hexToColor("ff0000"), false); // color to red
-  
-  // Save instance of ledStrip for further use
-  .....
-}
+let l = new LightbarSet();
+l.debug = true;
 
+await l.turnOn(true, true);
+await l.setBrightness(100);
 
-// Turn on debug statements
-debug(true);
+//setting both bars to warm white
+l.left.setWhite(2000);
+l.right.setWhite(2000);
+await l.saveColor();
 
-// Start Discovery
-startDiscovery()
+//setting left bar to red
+l.left.setRGBFull(255, 0, 0);
+await l.saveColor();
 
+//setting individual color segments
+l.left.setRGB(0, 0x1b, 0xa1, 0x98);
+l.left.setRGB(1, 0x00, 0x96, 0xB0);
+l.left.setRGB(2, 200, 50, 255);
+l.left.setRGB(3, 200, 50, 255);
+l.left.setRGB(4, 255, 0, 128);
+l.left.setRGB(5, 255, 0, 128);
+
+l.right.setRGB(0, 0x1b, 0xa1, 0x98);
+l.right.setRGB(1, 0x00, 0x96, 0xB0);
+l.right.setRGB(2, 200, 50, 255);
+l.right.setRGB(3, 200, 50, 255);
+l.right.setRGB(4, 255, 0, 128);
+l.right.setRGB(5, 255, 0, 128);
+
+await l.saveColor();
 ```
-
-## Types
-
-### GoveeLEDStrip
-
-Stores a Govee LED strip and it's details
-- `uuid: string` UUID of the device
-- `name: string` Bluetooth advertised name of the device
-- `model: string` Model string of the device
-- `writeCharacteristic: noble.Characteristic` Write Characteristic of the BLE device
-- `color: Color` Current color of the device
-- `isWhite: boolean` Is the current color a shade of white
-- `brightness: number` Current brightness between 0 and 255
-- `power: boolean` Current power state of the device
-
-### Color
-
-Stores a color as the RGB values. Uses helper functions to convert to and from a hex string
-- `red: number`
-- `green: number`
-- `blue: number`
 
 ## Credit
 
-The work for reverse engineering the bluetooth protocol wasn't done by me and this was only possible because of [BeauJBurroughs](https://github.com/BeauJBurroughs)'s work [here](https://github.com/BeauJBurroughs/Govee-H6127-Reverse-Engineering)
-
-Also used the shades of white researched and listed [here](https://github.com/chvolkmann/govee_btled)
+The work for reverse engineering the bluetooth protocol was done partly by me and partly by [egold555](https://github.com/egold555)'s work [here](https://github.com/egold555/Govee-Reverse-Engineering/blob/master/Products/H6053.md)

@@ -154,6 +154,10 @@ class LightbarSet {
         await this.sendMessage("global_brightness", brightness);
     }
 
+    async scene(scene) {
+        await this.sendMessage("scene", scene);
+    }
+
     async diy(options) {
         commands.diy(options).forEach(async cmd => {
             await this.bluetooth.writeCharacteristic.writeAsync(cmd, false);
