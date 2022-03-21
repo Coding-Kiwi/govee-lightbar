@@ -1,4 +1,4 @@
-const scenes = Object.freeze({
+const scenes = {
     MOVIE: 4,
 
     ROMANTIC: 7,
@@ -37,9 +37,9 @@ const scenes = Object.freeze({
     RAINBOW: 3,
     ROMANTIC_2: 5,
     ENERGETIC_2: 8,
-});
+};
 
-const configurableScenes = Object.freeze([
+const configurableScenes = [
     scenes.ENERGETIC,
     scenes.PARTY,
     scenes.ALARM,
@@ -52,9 +52,9 @@ const configurableScenes = Object.freeze([
     scenes.SPARKLE,
     scenes.FEAR,
     scenes.DRUMS
-]);
+];
 
-const diyEffects = Object.freeze({
+const diyEffects = {
     FADE: 0x00,
     JUMPING: 0x01,
     BREATHING: 0x05,
@@ -65,12 +65,22 @@ const diyEffects = Object.freeze({
     CROSSING: 0x0a,
     RAINBOW: 0x09,
     COMBO: 0xff
-});
+};
 
-module.exports = {
+module.exports = Object.freeze({
     scenes,
     configurableScenes,
     diyEffects,
     KELVIN_MIN: 2000,
-    KELVIN_MAX: 8900
-};
+    KELVIN_MAX: 8900,
+    CONTROL_PACKET_ID: 0x33,
+    CONTROL_KEEPALIVE_ID: 0xaa,
+    CONTROL_WRITE: 0xa3,
+    CMD_POWER: 0x33,
+    CMD_BRIGH: 0x04,
+    CMD_COLOR: 0x05,
+    BT_MODEL: "Govee_H6054_1146",
+    BT_SERVICE: "000102030405060708090a0b0c0d1910",
+    BT_WRITE_CHARACTERISTIC: "000102030405060708090a0b0c0d2b11",
+    BT_READ_CHARACTERISTIC: "000102030405060708090a0b0c0d2b10"
+});

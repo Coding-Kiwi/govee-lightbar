@@ -11,7 +11,7 @@
   "dependencies": {
     "@abandonware/noble": "^1.9.2-15",
     "express": "^4.17.3",
-    "kelvin-to-rgb": "^1.0.2",
-    "mitt": "^3.0.0"
-  }
+    "kelvin-to-rgb": "^1.0.2"
+  },
+  "devDependencies": {}
 }

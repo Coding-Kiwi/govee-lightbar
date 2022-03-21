@@ -1,39 +1,42 @@
 const noble = require("@abandonware/noble");
 
-const MODEL = "Govee_H6054_1146";
-const SERVICE = "000102030405060708090a0b0c0d1910";
-
-const WRITE_CHARACTERISTIC = "000102030405060708090a0b0c0d2b11";
-const READ_CHARACTERISTIC = "000102030405060708090a0b0c0d2b10";
+const {
+    BT_MODEL,
+    BT_SERVICE,
+    BT_WRITE_CHARACTERISTIC,
+    BT_READ_CHARACTERISTIC
+} = require("./constants");
 
 class BluetoothHandler {
-    constructor() {
+    constructor(set) {
         this.writeCharacteristic = null;
         this.connected = false;
         this.connect_cb = () => {};
 
+        this.set = set;
+
         noble.on("discover", async (peripheral) => {
-            if (peripheral.advertisement.localName !== MODEL) return;
+            if (peripheral.advertisement.localName !== BT_MODEL) return;
             await noble.stopScanningAsync();
 
             peripheral.on("disconnect", (err) => {
                 if (err) console.error("error ", err);
-                console.log(peripheral.advertisement.localName + " disconnected");
+                this.set.log(peripheral.advertisement.localName + " disconnected");
                 this.connected = false;
             });
 
             peripheral.on("connect", async (err) => {
                 if (err) console.error("error ", err);
-                console.log(peripheral.advertisement.localName + " connected")
+                this.set.log(peripheral.advertisement.localName + " connected")
                 this.connected = true;
 
-                let stuffFound = await this.peripheral.discoverSomeServicesAndCharacteristicsAsync([], [WRITE_CHARACTERISTIC, READ_CHARACTERISTIC])
+                let stuffFound = await this.peripheral.discoverSomeServicesAndCharacteristicsAsync([], [BT_WRITE_CHARACTERISTIC, BT_READ_CHARACTERISTIC])
                 if (!stuffFound.characteristics) {
                     return
                 }
 
                 this.writeCharacteristic = stuffFound.characteristics.find(c => {
-                    return c._serviceUuid === SERVICE && c.uuid === WRITE_CHARACTERISTIC;
+                    return c._serviceUuid === BT_SERVICE && c.uuid === BT_WRITE_CHARACTERISTIC;
                 });
 
                 this.connect_cb();
@@ -49,20 +52,37 @@ class BluetoothHandler {
             this.connect_cb = resolve;
 
             if (this.peripheral) {
-                console.log("Reconnecting");
+                this.set.log("Reconnecting");
                 this.peripheral.connectAsync();
             } else {
-                console.log("Starting scan");
+                this.set.log("Starting scan");
                 noble.startScanningAsync([], false);
+            }
+        });
+    }
+
+    disconnect() {
+        return new Promise((resolve, reject) => {
+            if (this.peripheral) {
+                this.set.log("Disconnecting");
+
+                this.writeCharacteristic = null;
+                this.peripheral.disconnectAsync().then(() => {
+                    this.peripheral = null;
+                }).then(resolve);
+            } else {
+                resolve();
             }
         });
     }
 
     async write(buffer) {
         if (!this.connected) {
-            console.log("Connecting...");
+            this.set.log("Connecting...");
             await this.connect();
         }
+
+        this.set.log("Bluetooth writing: ", buffer);
 
         return await this.writeCharacteristic.writeAsync(buffer, false);
     }

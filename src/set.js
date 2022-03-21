@@ -4,6 +4,8 @@ const Lightbar = require("./lightbar");
 
 class LightbarSet {
     constructor() {
+        this.debug = false;
+
         this.swapped = false;
         this.left = new Lightbar("left");
         this.right = new Lightbar("right");
@@ -11,7 +13,15 @@ class LightbarSet {
         this.left._full_segments = this.convertSegmentIndexes([0, 1, 2, 3, 4, 5], []);
         this.right._full_segments = this.convertSegmentIndexes([], [0, 1, 2, 3, 4, 5]);
 
-        this.bluetooth = new BluetoothHandler();
+        this.bluetooth = new BluetoothHandler(this);
+    }
+
+    log(...msg) {
+        if (this.debug) console.log(...msg);
+    }
+
+    disconnect() {
+        return this.bluetooth.disconnect();
     }
 
     swap() {
@@ -26,6 +36,7 @@ class LightbarSet {
     }
 
     async sendMessage(type, ...args) {
+        this.log("Sending command '" + type + "' with args " + args.join(", "));
         await this.bluetooth.write(commands[type](...args));
     }
 
@@ -97,15 +108,18 @@ class LightbarSet {
         Object.values(unique_colors).forEach(async (s) => {
             let seg = this.convertSegmentIndexes(s.segments_left, s.segments_right);
             msgs.push(commands.rgb(s.r, s.g, s.b, seg[0], seg[1]));
+            this.log("Saving color [rgb]", s, seg);
         });
 
         Object.values(unique_brighness).forEach(async (s) => {
             let seg = this.convertSegmentIndexes(s.segments_left, s.segments_right);
             msgs.push(commands.brightness(s.brightness, seg[0], seg[1]));
+            this.log("Saving color [brightness]", s.brightness, seg);
         });
 
         Object.values(kelvin_side).forEach(async (s) => {
             msgs.push(commands.white(s.k, s.s[0], s.s[1]));
+            this.log("Saving color [white]", s.k, s.s);
         });
 
         return new Promise((resolve, reject) => {

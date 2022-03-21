@@ -1,12 +1,13 @@
 const kelvinToRgb = require('kelvin-to-rgb');
 
-const CONTROL_PACKET_ID = 0x33;
-const CONTROL_KEEPALIVE_ID = 0xaa;
-const CONTROL_WRITE = 0xa3;
-
-const CMD_POWER = 0x33;
-const CMD_BRIGH = 0x04;
-const CMD_COLOR = 0x05;
+const {
+    CONTROL_PACKET_ID,
+    CONTROL_KEEPALIVE_ID,
+    CONTROL_WRITE,
+    CMD_POWER,
+    CMD_BRIGH,
+    CMD_COLOR
+} = require("./constants");
 
 function hexify(x) {
     let toReturn = x.toString(16)
