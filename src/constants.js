@@ -67,4 +67,10 @@ const diyEffects = Object.freeze({
     COMBO: 0xff
 });
 
-module.exports = scenes;
+module.exports = {
+    scenes,
+    configurableScenes,
+    diyEffects,
+    KELVIN_MIN: 2000,
+    KELVIN_MAX: 8900
+};

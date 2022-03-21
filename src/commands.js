@@ -1,3 +1,5 @@
+const kelvinToRgb = require('kelvin-to-rgb');
+
 const CONTROL_PACKET_ID = 0x33;
 const CONTROL_KEEPALIVE_ID = 0xaa;
 const CONTROL_WRITE = 0xa3;
@@ -82,12 +84,18 @@ module.exports = {
         ]);
     },
 
-    white(b1, b2, b3, b4, b5, s1, s2) {
+    white(k, s1, s2) {
+        k = Math.max(2000, Math.min(8900, k));
+        let rgb = kelvinToRgb(k);
+
+        let k1 = k >>> 8;
+        let k2 = k & 0xFF;
+
         return prepareMsg([
             CONTROL_PACKET_ID,
             CMD_COLOR, 0x15, 0x01,
             0xFF, 0xFF, 0xFF,
-            b1, b2, b3, b4, b5,
+            k1, k2, rgb[0], rgb[1], rgb[2],
             s1, s2
         ]);
     },
