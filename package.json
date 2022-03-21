@@ -1,17 +1,29 @@
 {
-  "name": "govee",
+  "name": "govee-lightbar",
   "version": "1.0.0",
-  "description": "",
+  "description": "Govee H6054 bluetooth toolkit",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
+  "author": "CodingKiwi",
+  "license": "GPL-3.0-or-later",
   "dependencies": {
     "@abandonware/noble": "^1.9.2-15",
     "express": "^4.17.3",
     "kelvin-to-rgb": "^1.0.2"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.codingkiwi.de/codingkiwi/govee-lightbar"
+  },
+  "keywords": [
+    "govee",
+    "h6054",
+    "flow",
+    "pro",
+    "bluetooth",
+    "rgb"
+  ]
 }
