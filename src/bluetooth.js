@@ -1,4 +1,4 @@
-const noble = require("@abandonware/noble");
+const noble = require("./noble");
 
 const {
     BT_MODEL,
@@ -69,6 +69,7 @@ class BluetoothHandler {
                 this.writeCharacteristic = null;
                 this.peripheral.disconnectAsync().then(() => {
                     this.peripheral = null;
+                    noble.stop();
                 }).then(resolve);
             } else {
                 resolve();

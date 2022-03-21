@@ -116,8 +116,14 @@ await l.diy({
       {r: 128,g: 86,b: 163},
       {r: 157,g: 56,b: 119}
     ]
-})
+});
+
+l.disconnect();
 ```
+
+## Bluetooth
+
+Bluetooth connection is handled by `@abandonware/noble`, [Prerequisites](https://github.com/abandonware/noble#installation) apply.
 
 ## Credit
 
