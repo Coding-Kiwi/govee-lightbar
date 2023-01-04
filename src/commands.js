@@ -6,7 +6,8 @@ const {
     CONTROL_WRITE,
     CMD_POWER,
     CMD_BRIGH,
-    CMD_COLOR
+    CMD_COLOR,
+    diyEffects
 } = require("./constants");
 
 function hexify(x) {
@@ -59,6 +60,7 @@ function buildDataPackages(data) {
         i += 17;
     }
 
+    //set the packet amount in the first packet
     packets[0][3] = packets.length;
 
     return packets.map(prepareMsg);
@@ -82,6 +84,14 @@ module.exports = {
             CMD_COLOR, 0x15, 0x02,
             percent,
             s1, s2
+        ]);
+    },
+
+    brightness_individual(segment_brightnesses) {
+        return prepareMsg([
+            CONTROL_PACKET_ID,
+            CMD_COLOR, 0x15, 0x03,
+            ...segment_brightnesses
         ]);
     },
 
@@ -129,6 +139,31 @@ module.exports = {
         ]);
     },
 
+    music(mode, sensitivity, colors = []) {
+        sensitivity = Math.max(0, Math.min(100, sensitivity));
+
+        let ret = [];
+
+        ret.push(prepareMsg([
+            CONTROL_PACKET_ID,
+            CMD_COLOR, 0x13,
+            mode,
+            sensitivity
+        ]));
+
+        if (colors.length) {
+            let color_data = buildDataPackages([
+                0x41,
+                mode,
+                0x07
+            ]);
+
+            ret.push(...color_data);
+        }
+
+        return ret;
+    },
+
     keepalive() {
         return prepareMsg([
             CONTROL_KEEPALIVE_ID,
@@ -140,6 +175,7 @@ module.exports = {
         let opts = Object.assign({
             style: 0x00,
             style_mode: 0x00,
+            combo_styles: [],
             speed: 98, //percent,
             colors: [{
                 r: 255,
@@ -154,26 +190,30 @@ module.exports = {
             color_arr.push(c.r, c.g, c.b);
         });
 
-        //"combo" style and stylemode
-        // data_packets.push([
-        //     0x01, 0x00, 0x02, 0x00, 0x03, 0x03
-        // ]);
+        if (opts.combo_styles.length) {
+            //we are in combo mode
+            opts.style = diyEffects.COMBO;
+            opts.style_mode = 0x00;
+        }
 
         let ret = buildDataPackages([
             0x04,
             opts.style, opts.style_mode,
             opts.speed,
             color_arr.length,
-            ...color_arr
+            ...color_arr,
+            ...opts.combo_styles
         ]);
 
         //diy mode (this might not be needed for writing)
         ret.push(prepareMsg([
             CONTROL_PACKET_ID,
-            CMD_COLOR, 0x0a, 0x01
+            CMD_COLOR, 0x0a,
+            0x01        //not sure what this does
         ]));
 
         return ret;
     },
+
     buildDataPackages
 }

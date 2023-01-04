@@ -57,8 +57,8 @@ const configurableScenes = [
 const diyEffects = {
     FADE: 0x00,
     JUMPING: 0x01,
-    BREATHING: 0x05,
     SPARKLE: 0x02,
+    BREATHING: 0x05,
     AURORA: 0x0d,
     SNOWFLAKE: 0x0b,
     STREAM: 0x08,
@@ -67,10 +67,22 @@ const diyEffects = {
     COMBO: 0xff
 };
 
+const musicEffects = {
+    VIVID: 0x05,
+    RHYTHM: 0x03,
+    HIT: 0x08,
+    SPRAY: 0x09,
+    BEAT: 0x49,
+    TORCH: 0x50,
+    RAINBOW: 0x51,
+    SHINY: 0x52,
+};
+
 module.exports = Object.freeze({
     scenes,
     configurableScenes,
     diyEffects,
+    musicEffects,
     KELVIN_MIN: 2000,
     KELVIN_MAX: 8900,
     CONTROL_PACKET_ID: 0x33,

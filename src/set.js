@@ -162,8 +162,12 @@ class LightbarSet {
         await this.sendMessage("scene", scene);
     }
 
-    async diy(options) {
+    diy(options) {
         return this.sendMessages(commands.diy(options));
+    }
+
+    music(mode, sensitivity, colors = []) {
+        return this.sendMessages(commands.music(mode, sensitivity, colors));
     }
 }
 

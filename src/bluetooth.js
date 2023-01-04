@@ -11,53 +11,54 @@ class BluetoothHandler {
     constructor(set) {
         this.writeCharacteristic = null;
         this.connected = false;
-        this.connect_cb = () => {};
-
         this.set = set;
-
-        noble.on("discover", async (peripheral) => {
-            if (peripheral.advertisement.localName !== BT_MODEL) return;
-            await noble.stopScanningAsync();
-
-            peripheral.on("disconnect", (err) => {
-                if (err) console.error("error ", err);
-                this.set.log(peripheral.advertisement.localName + " disconnected");
-                this.connected = false;
-            });
-
-            peripheral.on("connect", async (err) => {
-                if (err) console.error("error ", err);
-                this.set.log(peripheral.advertisement.localName + " connected")
-                this.connected = true;
-
-                let stuffFound = await this.peripheral.discoverSomeServicesAndCharacteristicsAsync([], [BT_WRITE_CHARACTERISTIC, BT_READ_CHARACTERISTIC])
-                if (!stuffFound.characteristics) {
-                    return
-                }
-
-                this.writeCharacteristic = stuffFound.characteristics.find(c => {
-                    return c._serviceUuid === BT_SERVICE && c.uuid === BT_WRITE_CHARACTERISTIC;
-                });
-
-                this.connect_cb();
-            });
-
-            this.peripheral = peripheral;
-            await this.peripheral.connectAsync();
-        });
     }
 
     connect() {
         return new Promise((resolve, reject) => {
-            this.connect_cb = resolve;
-
-            if (this.peripheral) {
-                this.set.log("Reconnecting");
-                this.peripheral.connectAsync();
-            } else {
-                this.set.log("Starting scan");
-                noble.startScanningAsync([], false);
+            if (this.connected) {
+                return resolve();
             }
+
+            noble.on("discover", async (peripheral) => {
+                if (peripheral.advertisement.localName !== BT_MODEL) return;
+
+                this.peripheral = peripheral;
+                this.set.log(peripheral.advertisement.localName + " found")
+
+                await noble.stopScanningAsync();
+
+                peripheral.once('disconnect', (err) => {
+                    if (err) console.error("error ", err);
+                    this.set.log(peripheral.advertisement.localName + " disconnected");
+                    this.connected = false;
+                });
+
+                peripheral.once("connect", async (err) => {
+                    if (err) console.error("error ", err);
+                    this.set.log(peripheral.advertisement.localName + " connected")
+
+                    setTimeout(async () => {
+                        let stuffFound = await this.peripheral.discoverSomeServicesAndCharacteristicsAsync([], [BT_WRITE_CHARACTERISTIC, BT_READ_CHARACTERISTIC])
+                        if (!stuffFound.characteristics) {
+                            return
+                        }
+
+                        this.writeCharacteristic = stuffFound.characteristics.find(c => {
+                            return c._serviceUuid === BT_SERVICE && c.uuid === BT_WRITE_CHARACTERISTIC;
+                        });
+
+                        this.set.log("service and characteristics found");
+
+                        this.connected = true;
+                        resolve();
+                    }, 100);
+                });
+
+                await peripheral.connectAsync();
+            });
+
+            noble.startScanningAsync([], false);
         });
     }
 
@@ -69,6 +70,7 @@ class BluetoothHandler {
                 this.writeCharacteristic = null;
                 this.peripheral.disconnectAsync().then(() => {
                     this.peripheral = null;
+                    this.connected = false;
                     noble.stop();
                 }).then(resolve);
             } else {
@@ -79,7 +81,7 @@ class BluetoothHandler {
 
     async write(buffer) {
         if (!this.connected) {
-            this.set.log("Connecting...");
+            this.set.log("Connecting for write");
             await this.connect();
         }
 
