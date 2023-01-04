@@ -60,6 +60,12 @@ The module can be used to control:
 - `<side>.setWhite(k)`
   - Set all segments of the bar to a white color, k is the kelvin value from 2000 to 8900
 
+## Exported constants
+
+- `scenes` object with all available scene ids
+- `musicEffects` object with all available music modes
+- `diyEffects` object with all available diy modes
+
 ## Bar Segments
 
 Each bar has 6 segments, they are indexed from 0 to 5, 0 being the segment closest to where the cable is attached.

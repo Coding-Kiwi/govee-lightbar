@@ -1,7 +1,6 @@
 const LightbarSet = require("./src/set");
 const {
     scenes,
-    configurableScenes,
     diyEffects,
     musicEffects
 } = require("./src/constants");
@@ -9,7 +8,6 @@ const {
 module.exports = {
     LightbarSet,
     scenes,
-    configurableScenes,
     diyEffects,
     musicEffects
 };
