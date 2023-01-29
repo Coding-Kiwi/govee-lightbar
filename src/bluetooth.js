@@ -7,6 +7,8 @@ const {
     BT_READ_CHARACTERISTIC
 } = require("./constants");
 
+const STATUS_MAPPER = require('@abandonware/noble/lib/hci-socket/hci-status');
+
 class BluetoothHandler {
     constructor(set) {
         this.writeCharacteristic = null;
@@ -29,7 +31,8 @@ class BluetoothHandler {
                 await noble.stopScanningAsync();
 
                 peripheral.once('disconnect', (reason) => {
-                    this.set.log(peripheral.advertisement.localName + " disconnected, reason: " + reason);
+                    let reason_msg = STATUS_MAPPER[reason];
+                    this.set.log(peripheral.advertisement.localName + " disconnected, reason: " + reason_msg + " " + reason);
                     this.connected = false;
                 });
 
