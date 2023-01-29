@@ -22,13 +22,14 @@ class BluetoothHandler {
                 return resolve();
             }
 
-            noble.on("discover", async (peripheral) => {
+            const discoverListener = async (peripheral) => {
                 if (peripheral.advertisement.localName !== BT_MODEL) return;
 
                 this.peripheral = peripheral;
                 this.set.log(peripheral.advertisement.localName + " found")
 
                 await noble.stopScanningAsync();
+                noble.removeListener("discover", discoverListener);
 
                 peripheral.once('disconnect', (reason) => {
                     let reason_msg = STATUS_MAPPER[reason];
@@ -37,7 +38,7 @@ class BluetoothHandler {
                 });
 
                 peripheral.once("connect", async (err) => {
-                    if (err) console.error("error ", err);
+                    if (err) console.error("error ", "Error connecting: " + err);
                     this.set.log(peripheral.advertisement.localName + " connected")
 
                     setTimeout(async () => {
@@ -58,7 +59,9 @@ class BluetoothHandler {
                 });
 
                 await peripheral.connectAsync();
-            });
+            }
+
+            noble.on("discover", discoverListener);
 
             noble.startScanningAsync([], false);
         });
