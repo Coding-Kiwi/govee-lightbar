@@ -28,9 +28,8 @@ class BluetoothHandler {
 
                 await noble.stopScanningAsync();
 
-                peripheral.once('disconnect', (err) => {
-                    if (err) console.error("error ", err);
-                    this.set.log(peripheral.advertisement.localName + " disconnected");
+                peripheral.once('disconnect', (reason) => {
+                    this.set.log(peripheral.advertisement.localName + " disconnected, reason: " + reason);
                     this.connected = false;
                 });
 
